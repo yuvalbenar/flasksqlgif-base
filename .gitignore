@@ -1,0 +1,32 @@
+# Ignore .env file containing sensitive data
+.env
+
+# Ignore other unnecessary files
+*.pyc
+*.pyo
+__pycache__
+*.db
+*.sqlite
+
+# Ignore virtual environments
+venv/
+
+# Ignore Docker-related files
+.docker/
+.dockerignore
+
+# Ignore IDE settings (VS Code, etc.)
+.vscode/
+.idea/
+#ignore the docker aws json
+Dockerrun.aws.json
+ starlight
+ static-site 
+ tutorial
+ .firebaserc
+ LICENSE
+ nodemon.json
+ package-lock.json
+ package.json
+ READ.md
+ 

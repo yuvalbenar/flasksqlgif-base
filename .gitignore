@@ -29,4 +29,6 @@ Dockerrun.aws.json
  package-lock.json
  package.json
  READ.md
- 
+ flasksqlgifbase_v1.0.0.tar
+ mysql_backup.tar.gz
+

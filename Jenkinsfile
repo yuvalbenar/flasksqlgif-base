@@ -14,13 +14,18 @@ pipeline {
         }
 
         stage('Setup Environment') {
-            steps {
-                echo "Setting up environment..."
-                sh '''
-                    echo "$ENV_FILE_CONTENT" > .env
-                '''
-            }
+    steps {
+        dir('/var/lib/jenkins/workspace/CI-Pipeline-Base') {
+            echo "Setting up environment..."
+            sh '''
+                echo "$ENV_FILE_CONTENT" > .env
+                echo "DEBUG: .env file content:"
+                cat .env
+            '''
         }
+    }
+}
+
 
         stage('Build') {
             steps {

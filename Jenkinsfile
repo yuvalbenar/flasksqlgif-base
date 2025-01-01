@@ -1,14 +1,14 @@
 pipeline {
     agent any
 
-    environment {
-        // Load credentials from Jenkins
-        DOCKER_CREDS = credentials('docker-hub-creds') // Replace with your existing DockerHub credentials ID
-        DOCKER_USERNAME = "${DOCKER_CREDS_USR}"       // Jenkins automatically sets *_USR
-        DOCKER_PASSWORD = "${DOCKER_CREDS_PSW}"       // Jenkins automatically sets *_PSW
-        IMAGE_NAME = 'yuvalbenar/flasksqlgifbase'     // Your Docker image name
-        IMAGE_TAG = 'v1.0.0'                          // Your Docker image tag
-    }
+   environment {
+    DOCKER_CREDS = credentials('DOCKER_LOGIN') // Use the ID you configured in Jenkins
+    DOCKER_USERNAME = "${DOCKER_CREDS_USR}"    // Automatically populated by Jenkins
+    DOCKER_PASSWORD = "${DOCKER_CREDS_PSW}"    // Automatically populated by Jenkins
+    IMAGE_NAME = 'yuvalbenar/flasksqlgifbase'  // Your Docker image name
+    IMAGE_TAG = 'v1.0.0'                       // Your Docker image tag
+}
+
 
     stages {
         stage('Clone') {

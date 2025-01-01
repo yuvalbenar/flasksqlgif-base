@@ -2,9 +2,7 @@ pipeline {
     agent any
 
     environment {
-        ENV_FILE_CONTENT = credentials('env-file') // ID of the secret text in Jenkins
-        DOCKER_USERNAME = 'yuvalbenar'             // DockerHub username
-        DOCKER_PASSWORD = 'Nami1234!'             // DockerHub password (use credentials in production)
+        ENV_FILE_CONTENT = credentials('env-file') // Load .env content from Jenkins credentials
         IMAGE_NAME = 'yuvalbenar/flasksqlgifbase' // Docker image name
         IMAGE_TAG = 'v1.0.0'                      // Docker image tag
     }
@@ -21,39 +19,42 @@ pipeline {
             steps {
                 script {
                     echo "Setting up environment..."
-                    writeFile file: '.env', text: "${ENV_FILE_CONTENT}"
-                    echo "DEBUG: .env file content:"
-                    sh 'cat .env'
+                    writeFile file: '.env', text: "${ENV_FILE_CONTENT}" // Create .env file in workspace
+                    echo "DEBUG: .env file created successfully."
                 }
             }
         }
 
-        stage('Build') {
+        stage('Build and Push Docker Image') {
             steps {
-                echo "Building application..."
-                sh '''
-                    # Authenticate DockerHub
-                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                    
-                    # Build and tag the Docker image
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                echo "Building and pushing Docker image..."
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh '''
+                            # Authenticate DockerHub
+                            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                            
+                            # Build and tag the Docker image
+                            docker build -t $IMAGE_NAME:$IMAGE_TAG .
 
-                    # Push the image to DockerHub
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                '''
+                            # Push the image to DockerHub
+                            docker push $IMAGE_NAME:$IMAGE_TAG
+                        '''
+                    }
+                }
             }
         }
 
-        stage('Test') {
+        stage('Test Application') {
             steps {
                 echo "Testing application..."
                 sh '''
                     set -e
-                    docker-compose down || true   # Stop running containers if any
-                    docker-compose up -d          # Start the application in detached mode
+                    docker-compose down || true   # Stop running containers
+                    docker-compose up -d          # Start application in detached mode
                     echo "Waiting for application to start..."
                     sleep 10
-                    curl -f http://192.168.3.84:5000 || exit 1
+                    curl -f http://localhost:5000 || exit 1  # Adjust test URL if needed
                 '''
             }
         }
@@ -73,7 +74,7 @@ pipeline {
     post {
         always {
             echo "Cleaning up environment..."
-            sh 'docker-compose down || true' // Clean resources after pipeline
+            sh 'docker-compose down || true' // Clean up resources after pipeline
         }
         success {
             echo "Pipeline completed successfully!"

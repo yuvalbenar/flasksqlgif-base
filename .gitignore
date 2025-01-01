@@ -1,6 +1,11 @@
 # Ignore .env file containing sensitive data
 .env
 
+*.log
+
+*.tar
+*.gz
+
 # Ignore other unnecessary files
 *.pyc
 *.pyo

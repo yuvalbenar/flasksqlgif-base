@@ -1,5 +1,14 @@
 pipeline {
     agent any
+stage('Docker Authentication Test') {
+    steps {
+        sh """
+        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+        """
+    }
+}
+
+
 
    environment {
     DOCKER_CREDS = credentials('DOCKER_LOGIN') // Use the ID you configured in Jenkins

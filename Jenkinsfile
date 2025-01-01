@@ -18,21 +18,19 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                echo "Building application..."
-                sh '''
-                    # Authenticate DockerHub
-                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                    
-                    # Build and tag the Docker image
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+       stage('Build') {
+    steps {
+        echo "Building application..."
+        sh '''
+            set -x
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            docker build -t $IMAGE_NAME:$IMAGE_TAG .
+            docker push $IMAGE_NAME:$IMAGE_TAG
+            set +x
+        '''
+    }
+}
 
-                    # Push the image to DockerHub
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                '''
-            }
-        }
 
         stage('Test') {
             steps {

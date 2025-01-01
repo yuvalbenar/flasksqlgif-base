@@ -27,15 +27,16 @@ pipeline {
         }
 
         stage('Build') {
-            steps {
-                echo "Building application..."
-                sh '''
-                    set -e  # Exit immediately if a command exits with a non-zero status
-                    docker-compose down || true  # Ensure any running containers are stopped
-                    docker-compose build         # Build the images
-                '''
-            }
-        }
+    steps {
+        echo "Building application..."
+        sh '''
+            docker-compose -f /var/lib/jenkins/workspace/CI Pipeline base/docker-compose.yaml down || true
+            docker-compose -f /var/lib/jenkins/workspace/CI Pipeline base/docker-compose.yaml build
+            docker-compose -f /var/lib/jenkins/workspace/CI Pipeline base/docker-compose.yaml up -d
+        '''
+    }
+}
+
 
         stage('Test') {
             steps {

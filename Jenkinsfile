@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        // Load environment variables from Jenkins credentials
         ENV_FILE_CONTENT = credentials('env-file') // ID of the secret text in Jenkins
     }
 
@@ -14,26 +15,24 @@ pipeline {
         }
 
         stage('Setup Environment') {
-    steps {
-        dir('/var/lib/jenkins/workspace/CI-Pipeline-Base') {
-            echo "Setting up environment..."
-            sh '''
-                echo "$ENV_FILE_CONTENT" > .env
-                echo "DEBUG: .env file content:"
-                cat .env
-            '''
+            steps {
+                script {
+                    // Ensure the working directory matches Jenkins workspace
+                    echo "Setting up environment..."
+                    writeFile file: '.env', text: "${ENV_FILE_CONTENT}"
+                    echo "DEBUG: .env file content:"
+                    sh 'cat .env'
+                }
+            }
         }
-    }
-}
-
 
         stage('Build') {
             steps {
                 echo "Building application..."
                 sh '''
-                    docker-compose down || true
-                    docker-compose build
-                    docker-compose up -d
+                    set -e  # Exit immediately if a command exits with a non-zero status
+                    docker-compose down || true  # Ensure any running containers are stopped
+                    docker-compose build         # Build the images
                 '''
             }
         }
@@ -42,6 +41,9 @@ pipeline {
             steps {
                 echo "Testing application..."
                 sh '''
+                    set -e
+                    docker-compose up -d         # Start the application in detached mode
+                    echo "Waiting for application to start..."
                     sleep 10
                     curl -f http://192.168.3.84:5000 || exit 1
                 '''
@@ -52,10 +54,24 @@ pipeline {
             steps {
                 echo "Deploying application..."
                 sh '''
-                    docker-compose down || true
-                    docker-compose up -d
+                    set -e
+                    docker-compose down || true  # Stop running containers
+                    docker-compose up -d         # Start containers again in detached mode
                 '''
             }
+        }
+    }
+
+    post {
+        always {
+            echo "Cleaning up environment..."
+            sh 'docker-compose down || true' // Ensure resources are cleaned after pipeline
+        }
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }

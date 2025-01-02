@@ -1,17 +1,8 @@
 pipeline {
     agent any
-stage('Docker Authentication Test') {
-    steps {
-        sh """
-        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-        """
-    }
-}
-
-
 
    environment {
-    DOCKER_CREDS = credentials('DOCKER_LOGIN') // Use the ID you configured in Jenkins
+    DOCKER_CREDS = credentials('docker-hub-creds') // Use the ID you configured in Jenkins
     DOCKER_USERNAME = "${DOCKER_CREDS_USR}"    // Automatically populated by Jenkins
     DOCKER_PASSWORD = "${DOCKER_CREDS_PSW}"    // Automatically populated by Jenkins
     IMAGE_NAME = 'yuvalbenar/flasksqlgifbase'  // Your Docker image name

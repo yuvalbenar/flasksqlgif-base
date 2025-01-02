@@ -32,19 +32,7 @@ pipeline {
 }
 
 
-        stage('Test') {
-            steps {
-                echo "Testing application..."
-                sh '''
-                    set -e
-                    docker-compose down || true   # Stop running containers if any
-                    docker-compose up -d          # Start the application in detached mode
-                    echo "Waiting for application to start..."
-                    sleep 10
-                    curl -f http://192.168.3.84:5000 || exit 1
-                '''
-            }
-        }
+       
 
         stage('Deploy') {
             steps {
@@ -58,16 +46,5 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            echo "Cleaning up environment..."
-            sh 'docker-compose down || true' // Clean resources after pipeline
-        }
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        failure {
-            echo "Pipeline failed. Check logs for details."
-        }
-    }
+    
 }

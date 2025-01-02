@@ -45,10 +45,12 @@ pipeline {
 
         stage('Deploy') {
             steps {
-               '''
-                        docker-compose up -d
-                    
-            '''
+                echo "Deploying application..."
+                sh '''
+                    set -e
+                    docker-compose down || true   # Stop running containers
+                    docker-compose up -d          # Start containers in detached mode
+                '''
             }
         }
     }

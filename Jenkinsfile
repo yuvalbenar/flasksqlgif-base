@@ -44,14 +44,18 @@ pipeline {
         }
 
         stage('Deploy') {
-            steps {
-                echo "Deploying application..."
-                sh '''
-                    set -e
-                    docker-compose down || true   # Stop running containers
-                    docker-compose up -d          # Start containers in detached mode
-                '''
-            }
+    steps {
+        echo "Deploying application..."
+        withEnv(["DATABASE_HOST=gif-db", "DATABASE_PORT=3306", "DATABASE_USER=root", "DATABASE_PASSWORD=password", "DATABASE_NAME=flaskdb"]) {
+            sh '''
+                set -e
+                docker-compose down || true
+                docker-compose up -d
+            '''
+        }
+    }
+}
+
         }
     }
 

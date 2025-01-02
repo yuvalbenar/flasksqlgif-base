@@ -44,18 +44,16 @@ pipeline {
         }
 
         stage('Deploy') {
-    steps {
-        echo "Deploying application..."
-        withEnv(["DATABASE_HOST=gif-db", "DATABASE_PORT=3306", "DATABASE_USER=root", "DATABASE_PASSWORD=password", "DATABASE_NAME=flaskdb"]) {
-            sh '''
-                set -e
-                docker-compose down || true
-                docker-compose up -d
-            '''
-        }
-    }
-}
-
+            steps {
+                echo "Deploying application..."
+                withEnv(["DATABASE_HOST=gif-db", "DATABASE_PORT=3306", "DATABASE_USER=root", "DATABASE_PASSWORD=password", "DATABASE_NAME=flaskdb"]) {
+                    sh '''
+                        set -e
+                        docker-compose down || true
+                        docker-compose up -d
+                    '''
+                }
+            }
         }
     }
 

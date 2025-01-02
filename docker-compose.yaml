@@ -1,42 +1,77 @@
 version: '3.8'
 
 services:
-  flaskgif:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: flaskgif
-    ports:
-      - "5000:5000"
-    env_file:  # Include the .env file for environment variables
-      - .env
-    depends_on:
-      - gif-db
-    networks:
-      - flaskapp-network
-
   gif-db:
     image: mysql:5.7
     container_name: gif-db
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Root password for MySQL
-      MYSQL_DATABASE: ${MYSQL_DATABASE}           # Database to be created
-      MYSQL_USER: ${MYSQL_USER}                   # MySQL user
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}           # MySQL user password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3308:3306"
     networks:
-      - flaskapp-network
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql  # Mount init script
+      - flaskapp-network   # Add to a custom network
+
+  flaskgif:
+    build: .
+    container_name: flaskgif
+    environment:
+      DATABASE_HOST: gif-db
+      DATABASE_PORT: 3306
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      FLASK_ENV: ${FLASK_ENV}
+    ports:
+      - "5000:5000"  # Ensure Flask is accessible on port 5000
+    networks:
+      - flaskapp-network   # Add to the same network
 
 networks:
-  flaskapp-network:
+  flaskapp-network:     # Define the network for communication between containers
     driver: bridge
 
-volumes:
-  mysql-data:
+# version: '3.8'
+
+# services:
+#   flaskgif:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: flaskgif
+#     ports:
+#       - "5000:5000"
+#     env_file:  # Include the .env file for environment variables
+#       - .env
+#     depends_on:
+#       - gif-db
+#     networks:
+#       - flaskapp-network
+
+#   gif-db:
+#     image: mysql:5.7
+#     container_name: gif-db
+#     environment:
+#       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Root password for MySQL
+#       MYSQL_DATABASE: ${MYSQL_DATABASE}           # Database to be created
+#       MYSQL_USER: ${MYSQL_USER}                   # MySQL user
+#       MYSQL_PASSWORD: ${MYSQL_PASSWORD}           # MySQL user password
+#     ports:
+#       - "3308:3306"
+#     networks:
+#       - flaskapp-network
+#     volumes:
+#       - mysql-data:/var/lib/mysql
+#       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql  # Mount init script
+
+# networks:
+#   flaskapp-network:
+#     driver: bridge
+
+# volumes:
+#   mysql-data:
 
 # version: '3.8'
 # #to do: add .env file for securty and add it to .gitignore

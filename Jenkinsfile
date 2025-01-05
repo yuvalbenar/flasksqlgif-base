@@ -34,7 +34,7 @@ pipeline {
             }
         }
 
-    stage('Wait for Database') {
+   stage('Wait for Database') {
     steps {
         echo "Waiting for MySQL to be ready..."
         script {
@@ -43,13 +43,14 @@ pipeline {
 
             // Use a direct shell call with bash to handle the path
             sh """
-                echo "Current directory: $(pwd)"
+                echo "Current directory: \$(pwd)"
                 ls -l $waitForItPath
                 bash -c "$waitForItPath gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!"
             """
         }
     }
 }
+
 
 
         stage('Build') {

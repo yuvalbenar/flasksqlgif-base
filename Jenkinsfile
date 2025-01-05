@@ -35,16 +35,17 @@ pipeline {
         }
 
         stage('Wait for Database') {
-            steps {
-                echo "Waiting for MySQL to be ready..."
-                script {
-                    def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'
-                    sh """
-                        $waitForItPath gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
-                    """
-                }
-            }
+    steps {
+        echo "Waiting for MySQL to be ready..."
+        script {
+            def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'
+            sh """
+                "$waitForItPath" gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
+            """
         }
+    }
+}
+
 
         stage('Build') {
             steps {

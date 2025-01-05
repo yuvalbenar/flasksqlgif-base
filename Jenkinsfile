@@ -28,7 +28,8 @@ pipeline {
         echo "Cleaning up Docker containers..."
         sh '''
             docker-compose down || true   # Stop any running containers
-            docker ps -aq --filter "name=gif-db", "name=flaskgif" | xargs -r docker rm -f || true  # Force-remove conflicting containers by name
+            docker rmi $(docker images -q) | xargs -r docker rm -f || true  # Force-remove conflicting containers by name
+            
         '''
     }
 }

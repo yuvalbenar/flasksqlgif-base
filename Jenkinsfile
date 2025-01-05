@@ -47,18 +47,18 @@ pipeline {
 }
 
 
-        stage('Build') {
-            steps {
-                echo "Building application..."
-                sh '''
-                    set -x
-                    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                    set +x
-                '''
-            }
+        stage('Wait for Database') {
+    steps {
+        echo "Waiting for MySQL to be ready..."
+        script {
+            def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'
+            sh """
+                \"$waitForItPath\" gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
+            """
         }
+    }
+}
+
 
         stage('Deploy') {
             steps {

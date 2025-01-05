@@ -21,7 +21,7 @@ services:
       - /var/lib/jenkins/workspace/.env:/app/.env:ro
 
   gif-db:
-    image: mysql:8.0
+    image: mysql:5.7
     ports:
       - "3306:3306"
     environment:

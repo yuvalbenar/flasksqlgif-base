@@ -38,8 +38,7 @@ pipeline {
             steps {
                 echo "Waiting for MySQL to be ready..."
                 sh '''
-                    /var/lib/jenkins/workspace/"CI Pipeline base"/wait-for-it.sh gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
-
+                    "/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh" gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
                 '''
             }
         }

@@ -1,4 +1,3 @@
-
 version: '3.8'
 
 services:
@@ -14,9 +13,8 @@ services:
     depends_on:
       - gif-db
     networks:
-    - flaskapp-network
-   
-
+      - flaskapp-network
+    entrypoint: ["./wait-for-it.sh", "gif-db:3306", "--", "python", "./app.py"]  # Wait for DB before running app
 
   gif-db:
     image: mysql:5.7

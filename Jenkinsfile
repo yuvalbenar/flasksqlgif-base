@@ -10,13 +10,6 @@ pipeline {
     }
 
     stages {
-        stage('Clone') {
-            steps {
-                echo "Cloning repository..."
-                git branch: 'develop', url: 'https://github.com/yuvalbenar/flasksqlgif-base.git'
-            }
-        }
-
         stage('Set up environment') {
             steps {
                 script {
@@ -27,6 +20,15 @@ pipeline {
                         '''
                     }
                 }
+            }
+        }
+
+        stage('Clean Up Docker Containers') {
+            steps {
+                echo "Cleaning up Docker containers..."
+                sh '''
+                    docker-compose down || true   # Stop any running containers
+                '''
             }
         }
 
@@ -48,7 +50,6 @@ pipeline {
                 echo "Deploying application..."
                 sh '''
                     set -e
-                    docker-compose down || true   # Stop running containers
                     docker-compose up -d          # Start containers in detached mode
                 '''
             }

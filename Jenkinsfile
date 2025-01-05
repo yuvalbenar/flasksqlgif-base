@@ -7,6 +7,7 @@ pipeline {
         DOCKER_PASSWORD = "${DOCKER_CREDS_PSW}"         // Automatically populated by Jenkins
         IMAGE_NAME = 'yuvalbenar/flasksqlgifbase'       // Your Docker image name
         IMAGE_TAG = 'v1.0.0'                            // Your Docker image tag
+        WAIT_FOR_IT = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh' // Path to the script
     }
 
     stages {
@@ -24,16 +25,23 @@ pipeline {
         }
 
         stage('Clean Up Docker Containers') {
-    steps {
-        echo "Cleaning up Docker containers..."
-        sh '''
-            docker-compose down || true   # Stop any running containers
-            docker ps -aq --filter "name=gif-db" --filter "name=flaskgif" | xargs -r docker rm -f || true
+            steps {
+                echo "Cleaning up Docker containers..."
+                sh '''
+                    docker-compose down || true   # Stop any running containers
+                    docker ps -aq --filter "name=gif-db" --filter "name=flaskgif" | xargs -r docker rm -f || true
+                '''
+            }
+        }
 
-        '''
-    }
-}
-
+        stage('Wait for Database') {
+            steps {
+                echo "Waiting for MySQL to be ready..."
+                sh '''
+                    $WAIT_FOR_IT gif-db:3306 --timeout=60 --strict -- echo "MySQL is ready!"
+                '''
+            }
+        }
 
         stage('Build') {
             steps {

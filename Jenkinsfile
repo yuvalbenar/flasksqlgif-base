@@ -38,6 +38,7 @@ pipeline {
             steps {
                 echo "Waiting for MySQL to be ready..."
                 sh '''
+                    # Fixing path with spaces issue by quoting the full path
                     "/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh" gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
                 '''
             }

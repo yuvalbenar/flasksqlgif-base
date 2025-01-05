@@ -18,7 +18,7 @@ def get_db_connection():
         try:
             connection = mysql.connector.connect(
                 host=os.getenv('DATABASE_HOST', 'gif-db'),  # Use gif-db as the host
-                port=int(os.getenv('DATABASE_PORT', 3306)),  # Default MySQL port inside Docker
+                port=int(os.getenv('DATABASE_PORT', 3308)),  # Default MySQL port inside Docker
                 user=os.getenv('DATABASE_USER', 'root'),
                 password=os.getenv('DATABASE_PASSWORD', 'password'),
                 database=os.getenv('DATABASE_NAME', 'flaskdb')

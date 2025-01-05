@@ -34,18 +34,22 @@ pipeline {
             }
         }
 
-        // Correct the stage name if it's duplicated
-        stage('Wait for Database') {
-            steps {
-                echo "Waiting for MySQL to be ready..."
-                script {
-                    def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'
-                    sh """
-                        \"$waitForItPath\" gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!
-                    """
-                }
-            }
+      stage('Wait for Database') {
+    steps {
+        echo "Waiting for MySQL to be ready..."
+        script {
+            // Explicitly escape the spaces in the path
+            def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'.replace(" ", "\ ")
+
+            // Use a direct shell call with bash to handle the path
+            sh """
+                echo "Current directory: $(pwd)"
+                ls -l $waitForItPath
+                bash -c "$waitForItPath gif-db:3306 --timeout=60 --strict -- echo MySQL is ready!"
+            """
         }
+    }
+}
 
         stage('Build') {
             steps {

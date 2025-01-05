@@ -34,12 +34,12 @@ pipeline {
             }
         }
 
-      stage('Wait for Database') {
+    stage('Wait for Database') {
     steps {
         echo "Waiting for MySQL to be ready..."
         script {
-            // Explicitly escape the spaces in the path
-            def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'.replace(" ", "\ ")
+            // Explicitly escape spaces in the path using replaceAll, which doesn't require escape character
+            def waitForItPath = '/var/lib/jenkins/workspace/CI Pipeline base/wait-for-it.sh'.replaceAll(" ", "\\\\ ")
 
             // Use a direct shell call with bash to handle the path
             sh """
@@ -50,6 +50,7 @@ pipeline {
         }
     }
 }
+
 
         stage('Build') {
             steps {

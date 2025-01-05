@@ -52,7 +52,7 @@ pipeline {
                 echo "Deploying application..."
                 sh '''
                     set -e
-                    docker-compose up -d          # Start containers in detached mode
+                    docker-compose up -d --build         # Start containers in detached mode
                 '''
             }
         }

@@ -10,7 +10,7 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose the port defined in the .env file (the port can be dynamic, so it won't be hardcoded)
-EXPOSE ${PORT}
+EXPOSE 5000
 
 # Run the Flask app when the container starts
 CMD ["python", "./app.py"]

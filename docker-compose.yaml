@@ -1,40 +1,49 @@
-version: '3.8'
+ersion: '3.8'
+
 
 services:
   flaskgif:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: flaskgif
     ports:
       - "5000:5000"
-    environment:
-      - FLASK_ENV=development
-      - DATABASE_HOST=gif-db
-      - DATABASE_PORT=3306
-      - DATABASE_USER=${MYSQL_USER}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD}
-      - DATABASE_NAME=${MYSQL_DATABASE}
+    env_file:  # Include the .env file for environment variables
+      - .env
     depends_on:
       - gif-db
-    volumes:
-      - .:/app
-      - /var/lib/jenkins/workspace/.env:/app/.env:ro
+    networks:
+    - flaskapp-network
+   
+
+
+
 
   gif-db:
     image: mysql:5.7
-    ports:
-      - "3306:3306"
+    container_name: gif-db
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  # Root password for MySQL
+      MYSQL_DATABASE: ${MYSQL_DATABASE}           # Database to be created
+      MYSQL_USER: ${MYSQL_USER}                   # MySQL user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}           # MySQL user password
+    ports:
+      - "3308:3306"
+    networks:
+      - flaskapp-network
     volumes:
-      - gif-db-data:/var/lib/mysql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      - mysql-data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql  # Mount init script
+
+
+networks:
+  flaskapp-network:
+    driver: bridge
+
 
 volumes:
-  gif-db-data:
+  mysql-data:
 
 
 # version: '3.8'

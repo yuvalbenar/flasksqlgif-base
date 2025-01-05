@@ -24,13 +24,15 @@ pipeline {
         }
 
         stage('Clean Up Docker Containers') {
-            steps {
-                echo "Cleaning up Docker containers..."
-                sh '''
-                    docker-compose down || true   # Stop any running containers
-                '''
-            }
-        }
+    steps {
+        echo "Cleaning up Docker containers..."
+        sh '''
+            docker-compose down || true   # Stop any running containers
+            docker ps -aq --filter "name=gif-db" | xargs -r docker rm -f || true  # Force-remove conflicting containers by name
+        '''
+    }
+}
+
 
         stage('Build') {
             steps {

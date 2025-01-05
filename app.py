@@ -1,6 +1,5 @@
-import os  # Add this line to import the os module
+import os
 import mysql.connector
-import random
 import time
 from flask import Flask, render_template
 from dotenv import load_dotenv
@@ -13,12 +12,12 @@ app = Flask(__name__)
 
 # Database connection function with retry mechanism
 def get_db_connection():
-    retries = 5  # Set retry attempts
+    retries = 10  # Retry up to 10 times
     while retries > 0:
         try:
             connection = mysql.connector.connect(
-                host=os.getenv('DATABASE_HOST', 'gif-db'),  # Use gif-db as the host
-                port=int(os.getenv('DATABASE_PORT', 3308)),  # Default MySQL port inside Docker
+                host=os.getenv('DATABASE_HOST', 'gif-db'),
+                port=int(os.getenv('DATABASE_PORT', 3308)),  # Ensure the port matches your Docker setup
                 user=os.getenv('DATABASE_USER', 'root'),
                 password=os.getenv('DATABASE_PASSWORD', 'password'),
                 database=os.getenv('DATABASE_NAME', 'flaskdb')
@@ -30,7 +29,7 @@ def get_db_connection():
             print(f"Error connecting to MySQL: {e}")
             retries -= 1
             print(f"Retrying... ({retries} retries left)")
-            time.sleep(2)  # Wait before retrying
+            time.sleep(5)  # Wait 5 seconds before retrying
     raise Exception("Failed to connect to the database after multiple attempts")
 
 @app.route('/')
@@ -52,7 +51,6 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
-
 
 
 # from flask import Flask, render_template

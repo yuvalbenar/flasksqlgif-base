@@ -14,7 +14,9 @@ services:
     depends_on:
       - gif-db
     networks:
-      - flaskapp-network
+    flaskapp-network:
+    driver: bridge
+
 
   gif-db:
     image: mysql:5.7

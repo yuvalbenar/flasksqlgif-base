@@ -28,7 +28,7 @@ pipeline {
         echo "Cleaning up Docker containers..."
         sh '''
             docker-compose down || true   # Stop any running containers
-            docker rmi $(docker images -q) | xargs -r docker rm -f || true  # Force-remove conflicting containers by name
+            docker rmi $(docker images -q) 
             
         '''
     }
@@ -52,7 +52,7 @@ pipeline {
             steps {
                 echo "Deploying application..."
                 sh '''
-                    set -e
+                    
                     docker-compose up -d --build         # Start containers in detached mode
                 '''
             }

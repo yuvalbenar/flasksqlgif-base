@@ -74,4 +74,5 @@ pipeline {
         always {
             cleanWs()  // Clean up workspace after pipeline runs
         }
-    
+    }
+}

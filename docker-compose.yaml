@@ -14,8 +14,8 @@ services:
     depends_on:
       - gif-db
     networks:
-    flaskapp-network:
-    driver: bridge
+    - flaskapp-network
+   
 
 
   gif-db:

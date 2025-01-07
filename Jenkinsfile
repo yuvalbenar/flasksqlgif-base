@@ -1,76 +1,51 @@
- agent any
-
+pipeline{
+    agent any
 
     environment {
         DOCKER_CREDS = credentials('docker-hub-creds')  // Use the ID you configured in Jenkins
         DOCKER_USERNAME = "${DOCKER_CREDS_USR}"         // Automatically populated by Jenkins
         DOCKER_PASSWORD = "${DOCKER_CREDS_PSW}"         // Automatically populated by Jenkins
         IMAGE_NAME = 'yuvalbenar/flasksqlgifbase'       // Your Docker image name
-        IMAGE_TAG = 'v1.0.0'                            // Your Docker image tag
+                                   
     }
 
+    stages{
+        stage("checkout code"){
+            steps{
+                checkout scm
+            }
+        }
 
-    stages {
-        stage('Set up environment') {
-            steps {
-                script {
-                    // Fetch the secret from Jenkins credentials and write to .env
-                    withCredentials([string(credentialsId: 'flasksqlgif-env-credentials', variable: 'ENV_FILE_CONTENT')]) {
-                        sh '''
-                            echo "$ENV_FILE_CONTENT" > .env
-                        '''
-                    }
+        stage("build docker image"){
+            steps{
+                script{
+                    dockerImage=docker.build("${IMAGE_NAME}:latest", ".")
+                    dockerImage.tag("v1.0.${env.BUILD_NUMBER}")
                 }
             }
         }
 
-
-        stage('Clean Up Docker Containers') {
-    steps {
-        echo "Cleaning up Docker containers..."
-        sh '''
-            docker-compose down || true   # Stop any running containers
-            docker ps -aq --filter "name=gif-db" --filter "name=flaskgif" | xargs -r docker rm -f || true
-
-
-        '''
-    }
-}
-
-
-
-
-        stage('Build') {
-            steps {
-                echo "Building application..."
-                sh '''
-                    set -x
-                    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                    set +x
-                '''
+        stage("unit testing"){
+            steps{
+                script{
+                    echo "testing..."
+                }
+                
             }
         }
 
-
-        stage('Deploy') {
-            steps {
-                echo "Deploying application..."
-                sh '''
-                    set -e
-                    docker-compose up -d --build         # Start containers in detached mode
-                '''
+        stage("push docker image"){
+            when{
+                branch "develop"
+            }
+            steps{
+                script{
+                    docker.withRegistry("https://registry.hub.docker.com", "docker-hub-creds"){
+                        dockerImage.push("latest")
+                        dockerImage.push("v1.0.${env.BUILD_NUMBER}")
+                    }
+                }
             }
         }
     }
-
-
-    post {
-        always {
-            cleanWs()  // Clean up workspace after pipeline runs
-        }
-    }
 }
-
-

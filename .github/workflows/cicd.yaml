@@ -1,3 +1,13 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop  # Trigger on push to the develop branch
+  pull_request:
+    branches:
+      - develop  # Trigger on pull request to the develop branch
+
 jobs:
   build:
     runs-on: ubuntu-latest

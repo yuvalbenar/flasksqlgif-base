@@ -16,6 +16,11 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
+    - name: Install Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+
     - name: Cache Docker layers
       uses: actions/cache@v2
       with:
@@ -40,35 +45,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Start the services in Docker Compose
+    - name: Install Docker Compose
       run: |
-        docker-compose -f docker-compose.yaml up -d
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
 
-    - name: Wait for Flask app to be ready
+    - name: Start services and run tests
       run: |
-        echo "Waiting for Flask app to be ready..."
-        RETRIES=5
-        until curl --fail http://localhost:5000; do
-          echo "Flask app is not ready yet. Retrying..."
-          RETRIES=$((RETRIES-1))
-          if [ $RETRIES -le 0 ]; then
-            echo "Flask app failed to start. Exiting."
-            exit 1
-          fi
-          sleep 10
-        done
-        echo "Flask app is ready!"
-
-    - name: Test if Flask app is running
-      run: |
-        curl --fail http://localhost:5000 || exit 1
-
-    - name: Shut down containers after testing
-      run: |
-        docker-compose -f docker-compose.yaml down --volumes --remove-orphans
+        docker-compose -f docker-compose.yaml up --build -d
+        docker-compose -f docker-compose.yaml run test
+        docker-compose -f docker-compose.yaml down
 
   deploy:
     runs-on: ubuntu-latest

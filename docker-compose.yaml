@@ -1,84 +1,52 @@
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:19.03.12
-        options: --privileged
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+version: '3.8'
 
-    - name: Set up Docker Buildx
-      run: |
-        docker buildx create --use
+services:
+  flaskgif:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flaskgif
+    ports:
+      - "5000:5000"
+    env_file: 
+      - .env
+    depends_on:
+      - gif-db
+    networks:
+      - flaskapp-network
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build and push Docker image
-      run: |
-        docker build -t yuvalbenar/flasksqlgifbase:v1.0.${{ github.run_number }} .
-        docker push yuvalbenar/flasksqlgifbase:v1.0.${{ github.run_number }}
+  gif-db:
+    image: mysql:5.7
+    container_name: gif-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3308:3306"
+    networks:
+      - flaskapp-network
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
 
   test:
-    runs-on: ubuntu-latest
-    needs: build  # This makes the test job wait for the build job to finish first
-    services:
-      docker:
-        image: docker:19.03.12
-        options: --privileged
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: flaskapp-test
+    depends_on:
+      - flaskgif
+    networks:
+      - flaskapp-network
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+networks:
+  flaskapp-network:
+    driver: bridge
 
-    - name: Install Docker Compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-
-    - name: Verify Docker Compose installation
-      run: docker-compose --version
-
-    - name: Start containers using docker-compose
-      run: |
-        docker-compose -f docker-compose.yaml up -d
-        sleep 30
-
-    - name: Run tests with curl
-      run: |
-        curl --fail http://localhost:5000 || exit 1
-
-    - name: Clean up Docker containers
-      run: |
-        docker-compose -f docker-compose.yaml down --volumes --remove-orphans
-
-  deploy:
-  runs-on: ubuntu-latest
-  needs: build
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Set up Azure CLI
-      uses: azure/azure-cli-action@v1
-
-    - name: Log in to Azure
-      run: |
-        az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
-
-    - name: Deploy to Azure Web App
-      run: |
-        az webapp up --name flasksqlgif-base --resource-group yuvirg --plan ASP-yuvirg-bbdc --location "Canada Central" --sku B1 --docker-image "index.docker.io/yuvalbenar/flasksqlgifbase:v1.0.82"
-
+volumes:
+  mysql-data:
 
 
 # version: '3.8'

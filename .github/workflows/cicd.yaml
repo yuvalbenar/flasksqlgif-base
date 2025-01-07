@@ -3,74 +3,54 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - develop
+      - develop  # Change this to your preferred branch if necessary
+  pull_request:
+    branches:
+      - develop  # Same here
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-    - name: Install Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
-
-    - name: Cache Docker layers
-      uses: actions/cache@v2
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-docker-
-
-    - name: Build Docker images
-      run: |
-        docker-compose -f docker-compose.yaml build
-
-    - name: Push Docker image to Docker Hub
-      run: |
-        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-        docker-compose -f docker-compose.yaml push
+      - name: Build and start containers
+        run: |
+          docker-compose -f docker-compose.yaml up --build -d
 
   test:
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Install Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
+      - name: Run tests in the test container
+        run: |
+          docker-compose -f docker-compose.yaml run --rm test
 
-    - name: Start services and run tests
-      run: |
-        docker-compose -f docker-compose.yaml up --build -d
-        docker-compose -f docker-compose.yaml run test
-        docker-compose -f docker-compose.yaml down
+      - name: Shut down containers
+        run: |
+          docker-compose -f docker-compose.yaml down
 
   deploy:
     runs-on: ubuntu-latest
     needs: test
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Install Azure CLI
-      run: |
-        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Set up Azure CLI
+        uses: azure/cli-action@v1
 
-    - name: Log in to Azure
-      run: |
-        az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+      - name: Log in to Azure
+        run: |
+          az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
 
-    - name: Deploy to Azure Web App
-      run: |
-        az webapp up --name flasksqlgif-base --resource-group yuvirg --plan ASP-yuvirg-bbdc --location "Canada Central" --sku B1 --docker-image "index.docker.io/yuvalbenar/flasksqlgifbase:v1.0.82"
+      - name: Deploy to Azure Web App
+        run: |
+          az webapp up --name flasksqlgif-base --resource-group yuvirg --plan ASP-yuvirg-bbdc --location "Canada Central" --sku B1

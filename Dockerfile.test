@@ -1,0 +1,17 @@
+# Dockerfile.test
+FROM python:3.8-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install necessary dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy your app code and test files into the container
+COPY . /app
+
+# Set environment variables (if any)
+ENV FLASK_ENV=development
+
+# Command to run the tests using pytest
+CMD ["pytest", "--maxfail=1", "--disable-warnings", "-q"]

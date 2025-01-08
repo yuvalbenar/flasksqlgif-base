@@ -79,7 +79,7 @@ jobs:
       - name: Install Azure CLI
         run: |
           curl -sL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
-          curl -sL https://packages.microsoft.com/repos/azure-cli/$(lsb_release -c | awk '{print $2}')/amd64/azure-cli.list | sudo tee /etc/apt/sources.list.d/azure-cli.list
+          echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ bionic main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
           sudo apt-get update
           sudo apt-get install azure-cli
           az --version

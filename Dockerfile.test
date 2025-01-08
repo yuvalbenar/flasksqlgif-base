@@ -1,17 +1,16 @@
-# Dockerfile.test
+# Use the official Python 3.8 slim image
 FROM python:3.8-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install necessary dependencies
+# Install dependencies
+RUN apt-get update && apt-get install -y curl && apt-get clean
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your app code and test files into the container
-COPY . /app
+# Copy test script
+COPY test_flask.py /app/
 
-# Set environment variables (if any)
-ENV FLASK_ENV=development
-
-# Command to run the tests using pytest
-CMD ["pytest", "--maxfail=1", "--disable-warnings", "-q"]
+# Command to run pytest
+CMD ["pytest", "--maxfail=1", "--disable-warnings"]

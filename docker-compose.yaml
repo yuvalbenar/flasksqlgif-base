@@ -8,8 +8,13 @@ services:
     container_name: flaskgif
     ports:
       - "5000:5000"
-    env_file: 
-      - .env
+    environment:
+      FLASK_ENV: ${FLASK_ENV}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
     depends_on:
       - gif-db
     networks:
@@ -40,8 +45,13 @@ services:
       - flaskgif
     networks:
       - flaskapp-network
-    env_file:
-      - .env  # Load the .env file
+    environment:
+      FLASK_APP_URL: ${FLASK_APP_URL}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
     command: pytest --maxfail=1 --disable-warnings
 
 networks:
@@ -50,7 +60,6 @@ networks:
 
 volumes:
   mysql-data:
-
 
 # version: '3.8'
 # #to do: add .env file for securty and add it to .gitignore

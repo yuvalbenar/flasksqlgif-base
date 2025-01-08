@@ -9,12 +9,17 @@ services:
     ports:
       - "5000:5000"
     environment:
-      FLASK_ENV: ${FLASK_ENV}
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_PORT: ${DATABASE_PORT}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      DATABASE_HOST: gif-db
+      DATABASE_PORT: 3306
       DATABASE_USER: ${DATABASE_USER}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME}
+      FLASK_ENV: ${FLASK_ENV}
+      FLASK_APP_URL: ${FLASK_APP_URL}
     depends_on:
       - gif-db
     networks:
@@ -46,12 +51,17 @@ services:
     networks:
       - flaskapp-network
     environment:
-      FLASK_APP_URL: ${FLASK_APP_URL}
-      DATABASE_HOST: ${DATABASE_HOST}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      DATABASE_HOST: gif-db
       DATABASE_PORT: ${DATABASE_PORT}
       DATABASE_USER: ${DATABASE_USER}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME}
+      FLASK_ENV: ${FLASK_ENV}
+      FLASK_APP_URL: ${FLASK_APP_URL}
     command: pytest --maxfail=1 --disable-warnings
 
 networks:

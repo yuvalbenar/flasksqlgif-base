@@ -15,12 +15,13 @@ def get_db_connection():
     retries = 5
     while retries > 0:
         try:
+            # Connecting to MySQL database with credentials from the .env file
             connection = mysql.connector.connect(
-                host=os.getenv('DATABASE_HOST', 'gif-db'),
-                port=int(os.getenv('DATABASE_PORT', 3306)),
-                user=os.getenv('DATABASE_USER', 'root'),
-                password=os.getenv('DATABASE_PASSWORD', 'password'),
-                database=os.getenv('DATABASE_NAME', 'flaskdb')
+                host=os.getenv('DATABASE_HOST', 'gif-db'),  # Using the Docker container name for MySQL
+                port=int(os.getenv('DATABASE_PORT', 3306)),  # Default MySQL port
+                user=os.getenv('DATABASE_USER', 'root'),  # 'root' user by default
+                password=os.getenv('DATABASE_PASSWORD', 'password'),  # Password from .env
+                database=os.getenv('DATABASE_NAME', 'flaskdb')  # Database name from .env
             )
             if connection.is_connected():
                 print("Connected to MySQL database")
@@ -52,7 +53,6 @@ def index():
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
 
-# from flask import Flask, render_template
 # import mysql.connector
 # #to do: get host user password and database from env varibels
 # app = Flask(__name__)

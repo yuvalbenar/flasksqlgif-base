@@ -31,19 +31,18 @@ services:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
 
- test:
-  build:
-    context: .
-    dockerfile: Dockerfile.test
-  container_name: test
-  depends_on:
-    - flaskgif
-  networks:
-    - flaskapp-network
-  env_file:
-    - .env  # Load the .env file
-  command: pytest --maxfail=1 --disable-warnings
-
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: test
+    depends_on:
+      - flaskgif
+    networks:
+      - flaskapp-network
+    env_file:
+      - .env  # Load the .env file
+    command: pytest --maxfail=1 --disable-warnings
 
 networks:
   flaskapp-network:

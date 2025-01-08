@@ -71,6 +71,7 @@ networks:
 volumes:
   mysql-data:
 
+
 # version: '3.8'
 # #to do: add .env file for securty and add it to .gitignore
 # #init intilize database from docker compose

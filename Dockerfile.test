@@ -1,16 +1,18 @@
-# Use the official Python 3.8 slim image
+# Use a Python 3.8 image for the test container
 FROM python:3.8-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
-RUN apt-get update && apt-get install -y curl && apt-get clean
+# Install testing dependencies
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Copy test script
-COPY test_flask.py /app/
+# Copy the code and test files
+COPY . /app/
 
-# Command to run pytest
+# Install any testing libraries
+RUN pip install pytest requests
+
+# Command to run tests
 CMD ["pytest", "--maxfail=1", "--disable-warnings"]

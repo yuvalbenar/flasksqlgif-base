@@ -76,8 +76,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Azure CLI
-        uses: azure/login@v1.0.0  # Corrected Azure CLI action
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/azure-cli-install | sudo bash
+          az --version
 
       - name: Log in to Azure
         run: |

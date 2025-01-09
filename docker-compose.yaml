@@ -1,5 +1,5 @@
 version: '3.8'
-#works!
+
 services:
   flaskgif:
     build:
@@ -41,35 +41,13 @@ services:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
 
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    container_name: test
-    depends_on:
-      - flaskgif
-    networks:
-      - flaskapp-network
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      DATABASE_HOST: gif-db
-      DATABASE_PORT: ${DATABASE_PORT}
-      DATABASE_USER: ${DATABASE_USER}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_NAME: ${DATABASE_NAME}
-      FLASK_ENV: ${FLASK_ENV}
-      FLASK_APP_URL: ${FLASK_APP_URL}
-    command: pytest --maxfail=1 --disable-warnings
-
 networks:
   flaskapp-network:
     driver: bridge
 
 volumes:
   mysql-data:
+
 
 
 # version: '3.8'

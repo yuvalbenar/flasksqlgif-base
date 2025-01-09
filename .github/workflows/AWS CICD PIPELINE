@@ -30,7 +30,7 @@ jobs:
       - name: Output GitHub Actions run number
         run: |
           echo "GitHub Actions Run Number: ${{ github.run_number }}"
-          echo "CI/CD Pipeline Run Number: ${{ github.run_number }}" >> $GITHUB_ENV
+          echo "CI_CD_PIPELINE_RUN_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: |

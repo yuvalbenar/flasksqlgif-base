@@ -1,12 +1,11 @@
-name: CI/CD Pipeline
-
+name: AWS CI/CD Pipeline
 on:
   push:
     branches:
-      - develop
+      - develop-aws
   pull_request:
     branches:
-      - develop
+      - develop-aws
 
 jobs:
   build:

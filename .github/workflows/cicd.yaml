@@ -44,7 +44,7 @@ jobs:
         run: |
           docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
 
-   deploy:
+  deploy:
     runs-on: ubuntu-latest
     needs: build
 
@@ -121,17 +121,3 @@ jobs:
         run: |
           ssh -i ~/.ssh/my-dynamic-key ec2-user@$PUBLIC_IP \
             "cd /home/ec2-user/project && docker-compose up -d"
-
-
-      # Optional: If you want to terminate the instance and delete the key pair after use, you can add these steps below:
-      # Uncomment them if needed.
-      #
-      # - name: Delete EC2 key pair
-      #   run: |
-      #     aws ec2 delete-key-pair --key-name MyDynamicKey
-      #     rm -f my-dynamic-key.pem
-      #
-      # - name: Terminate EC2 instance
-      #   if: always()
-      #   run: |
-      #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID

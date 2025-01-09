@@ -27,15 +27,14 @@ jobs:
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> $GITHUB_ENV
 
-      - name: Install Docker Compose
+      - name: Output GitHub Actions run number
         run: |
-          sudo curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
+          echo "GitHub Actions Run Number: ${{ github.run_number }}"
+          echo "CI/CD Pipeline Run Number: ${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: |
-          docker build -t yuvalbenar/flasksqlgifbase:v1.0.83 .
+          docker build -t yuvalbenar/flasksqlgifbase:${{ github.run_number }} .
 
       - name: Docker login to Docker Hub
         run: |
@@ -43,7 +42,7 @@ jobs:
 
       - name: Push Docker image to Docker Hub
         run: |
-          docker push yuvalbenar/flasksqlgifbase:v1.0.83
+          docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -65,7 +64,6 @@ jobs:
           chmod 400 my-dynamic-key.pem
 
       - name: Launch EC2 instance
-        id: launch_instance
         run: |
           INSTANCE_ID=$(aws ec2 run-instances \
             --image-id ami-0ca9fb66e076a6e32 \
@@ -76,30 +74,20 @@ jobs:
             --subnet-id subnet-08f24a5a589f2bcaf \
             --query 'Instances[0].InstanceId' \
             --output text)
+
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
-          echo "::set-output name=instance_id::$INSTANCE_ID"
 
       - name: Wait for EC2 instance to be running
         run: |
           aws ec2 wait instance-running --instance-ids $INSTANCE_ID
 
       - name: Get EC2 Public IP
-        id: get_public_ip
         run: |
           PUBLIC_IP=$(aws ec2 describe-instances \
             --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
-          echo "::set-output name=public_ip::$PUBLIC_IP"
-
-      - name: Update Security Group to Allow SSH Access
-        run: |
-          aws ec2 authorize-security-group-ingress \
-            --group-id sg-0a1c36e26e49cd294 \
-            --protocol tcp \
-            --port 22 \
-            --cidr 0.0.0.0/0  # Allow SSH from anywhere, modify as needed for security
 
       - name: Copy project files to EC2 instance
         run: |
@@ -110,10 +98,8 @@ jobs:
           ssh -i my-dynamic-key.pem ec2-user@$PUBLIC_IP \
             "cd /home/ec2-user/project && docker-compose up -d"
 
-      - name: Output Instance and Public IP
-        run: |
-          echo "Instance ID: $INSTANCE_ID"
-          echo "Public IP: $PUBLIC_IP"
+      
+
 
       # Optional: If you want to terminate the instance and delete the key pair after use, you can add these steps below:
       # Uncomment them if needed.

@@ -39,7 +39,7 @@ def index():
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Query to get a random image URL from the database
+    # Query to get a random image URL from the database trolololo
     cursor.execute("SELECT url FROM images ORDER BY RAND() LIMIT 1")
     random_image = cursor.fetchone()[0]  # Get the URL from the query result
 

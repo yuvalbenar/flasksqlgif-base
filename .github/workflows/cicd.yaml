@@ -1,42 +1,90 @@
-name: Deploy Flask App to EC2
+name: AWS CI/CD Pipeline
 
 on:
   push:
     branches:
-      - develop
+      - develop-aws
+  pull_request:
+    branches:
+      - develop-aws
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      # Checkout the code
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up AWS CLI
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Add secrets to GITHUB_ENV
+        run: |
+          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
+          echo "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> $GITHUB_ENV
+
+      - name: Output GitHub Actions run number
+        run: |
+          echo "GitHub Actions Run Number: ${{ github.run_number }}"
+          echo "CI_CD_PIPELINE_RUN_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build -t yuvalbenar/flasksqlgifbase:${{ github.run_number }} .
+
+      - name: Docker login to Docker Hub
+        run: |
+          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+
+      - name: Push Docker image to Docker Hub
+        run: |
+          docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install AWS CLI
+        run: |
+          set -ex
+          if ! command -v aws &> /dev/null; then
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+          fi
+          aws --version
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      # Generate SSH key pair for EC2 instance
-      - name: Generate SSH Key
+      - name: Create SSH key pair in AWS
         run: |
+          set -ex
+          # Generate a new SSH key pair locally
           KEY_NAME="MyDynamicKey-${{ github.run_number }}"
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/$KEY_NAME -N ""
-          PUBLIC_KEY=$(cat ~/.ssh/$KEY_NAME.pub)
-          echo "PUBLIC_KEY=$PUBLIC_KEY" >> $GITHUB_ENV
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/$KEY_NAME -N ""  # Generate a new SSH key pair
 
-      # Import the SSH key pair to AWS
-      - name: Import SSH Key to AWS
-        run: |
+          # Read the public key, strip any non-ASCII characters, and base64-encode it
+          PUBLIC_KEY=$(cat ~/.ssh/$KEY_NAME.pub | tr -d '\r' | base64)
+
+          # Import the key pair to AWS
           aws ec2 import-key-pair --key-name $KEY_NAME --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}
 
-      # Launch EC2 instance with the generated key pair
-      - name: Launch EC2 Instance
+      - name: Deploy to AWS EC2
         run: |
+          set -ex
           INSTANCE_ID=$(aws ec2 run-instances \
             --region ${{ secrets.AWS_DEFAULT_REGION }} \
             --image-id ami-01816d07b1128cd2d \
@@ -63,9 +111,6 @@ jobs:
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
           aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_DEFAULT_REGION }}
 
-      # Retrieve the public IP address of the EC2 instance
-      - name: Get EC2 Public IP
-        run: |
           PUBLIC_IP=$(aws ec2 describe-instances \
             --region ${{ secrets.AWS_DEFAULT_REGION }} \
             --instance-ids "$INSTANCE_ID" \
@@ -74,11 +119,48 @@ jobs:
 
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
-      # Deploy to EC2 instance via SSH trolololo
-      - name: Deploy Flask App to EC2
+      - name: Check SSH connection status
         run: |
-          scp -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no -r ./project-files ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/
+          set -ex
+          while ! nc -z ${{ env.PUBLIC_IP }} 22; do
+              echo "waiting for ssh test to succeed.."
+              sleep 3
+          done
+
+      - name: Install SSH client
+        run: |
+          set -ex
+          if ! ssh -V 2>&1 /dev/null; then 
+            sudo apt-get update
+            sudo apt-get install -y openssh-client
+          fi
+
+      - name: SCP and SSH into EC2 instance
+        run: |
+          set -ex
+          ls -ltra
+          scp -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no \
+              docker-compose.yaml \
+              init.sql \
+              ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/
+
           ssh -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << EOF
-            cd /home/ec2-user/project-files
-            docker-compose up -d
+              newgrp docker
+              cd /home/ec2-user/
+              docker --version
+              docker-compose --version
+              docker-compose up -d --quiet-pull
           EOF
+
+      # Optional: Terminate EC2 instance and delete key pair after deployment
+      # Uncomment if required
+      #
+      # - name: Delete EC2 key pair
+      #   run: |
+      #     aws ec2 delete-key-pair --key-name $KEY_NAME
+      #     rm -f ~/.ssh/$KEY_NAME
+      #
+      # - name: Terminate EC2 instance
+      #   if: always()
+      #   run: |
+      #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID

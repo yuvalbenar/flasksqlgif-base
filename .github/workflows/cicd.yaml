@@ -57,6 +57,7 @@ jobs:
             sudo ./aws/install
           fi
           aws --version
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -64,9 +65,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Create SSH key pair in AWS
+      - name: Delete existing SSH key pair if it exists and create new one
         run: |
           set -ex
+          # Check if the key pair exists and delete it if it does
+          EXISTING_KEY=$(aws ec2 describe-key-pairs --key-name MyDynamicKey --query "KeyPairs[0].KeyName" --output text)
+          if [ "$EXISTING_KEY" == "MyDynamicKey" ]; then
+            aws ec2 delete-key-pair --key-name MyDynamicKey
+          fi
           # Generate a new SSH key pair locally
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
           # Read the public key, strip any non-ASCII characters, and base64-encode it

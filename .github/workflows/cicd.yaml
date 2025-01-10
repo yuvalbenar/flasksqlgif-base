@@ -74,7 +74,7 @@ jobs:
 
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
-      # Deploy to EC2 instance via SSH
+      # Deploy to EC2 instance via SSH trolololo
       - name: Deploy Flask App to EC2
         run: |
           scp -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no -r ./project-files ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/

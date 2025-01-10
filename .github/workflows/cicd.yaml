@@ -56,9 +56,9 @@ jobs:
         run: |
           set -ex
           if ! command -v aws &> /dev/null; then
-           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-           unzip awscliv2.zip
-           sudo ./aws/install
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
           fi
           aws --version
 
@@ -74,6 +74,11 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/my-dynamic-key -N ""  # Generate a new SSH key pair
           cat ~/.ssh/my-dynamic-key.pub  # Output the public key
+
+      - name: Create EC2 instance profile and role
+        run: |
+          aws iam create-instance-profile --instance-profile-name access-to-s3 || echo "Instance profile already exists"
+          aws iam add-role-to-instance-profile --instance-profile-name access-to-s3 --role-name access-to-s3
 
       - name: Deploy to AWS EC2
         run: |

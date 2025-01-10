@@ -77,41 +77,41 @@ jobs:
 
       - name: Deploy to AWS EC2
         run: |
-           set -ex
-           INSTANCE_ID=$(aws ec2 run-instances \
-              --region ${{ secrets.AWS_DEFAULT_REGION }} \
-              --image-id ami-01816d07b1128cd2d \
-              --instance-type t2.micro \
-              --key-name MyDynamicKey \
-              --security-groups flask-mysql \
-              --iam-instance-profile Name=access-to-s3 \
-              --user-data '#!/bin/bash
-            yum update -y
-            yum install -y yum-utils device-mapper-persistent-data lvm2
-            amazon-linux-extras enable docker
-            yum install -y docker
-            systemctl start docker
-            systemctl enable docker
-            usermod -aG docker ec2-user
-            newgrp docker
-            DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
-            curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose' \
-              --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=project}]' \
-              --query 'Instances[0].InstanceId' \
-              --output text)
+          set -ex
+          INSTANCE_ID=$(aws ec2 run-instances \
+            --region ${{ secrets.AWS_DEFAULT_REGION }} \
+            --image-id ami-01816d07b1128cd2d \
+            --instance-type t2.micro \
+            --key-name MyDynamicKey \
+            --security-groups flask-mysql \
+            --iam-instance-profile Name=access-to-s3 \
+            --user-data '#!/bin/bash
+          yum update -y
+          yum install -y yum-utils device-mapper-persistent-data lvm2
+          amazon-linux-extras enable docker
+          yum install -y docker
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ec2-user
+          newgrp docker
+          DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
+          curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose' \
+            --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=project}]' \
+            --query 'Instances[0].InstanceId' \
+            --output text)
 
-           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV 
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV 
 
-           aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_DEFAULT_REGION }}
+          aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_DEFAULT_REGION }}
 
-           PUBLIC_IP=$(aws ec2 describe-instances \
-                    --region ${{ secrets.AWS_DEFAULT_REGION }} \
-                    --instance-ids "$INSTANCE_ID" \
-                    --query 'Reservations[0].Instances[0].PublicIpAddress' \
-                    --output text)
-                
-           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
+          PUBLIC_IP=$(aws ec2 describe-instances \
+            --region ${{ secrets.AWS_DEFAULT_REGION }} \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+
+          echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
       - name: Copy project files to EC2 instance
         run: |
@@ -121,3 +121,16 @@ jobs:
         run: |
           ssh -i ~/.ssh/my-dynamic-key ec2-user@$PUBLIC_IP \
             "cd /home/ec2-user/project && docker-compose up -d"
+
+      # Optional: Terminate EC2 instance and delete key pair after deployment
+      # Uncomment if required
+      #
+      # - name: Delete EC2 key pair
+      #   run: |
+      #     aws ec2 delete-key-pair --key-name MyDynamicKey
+      #     rm -f my-dynamic-key.pem
+      #
+      # - name: Terminate EC2 instance
+      #   if: always()
+      #   run: |
+      #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID

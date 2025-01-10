@@ -19,18 +19,13 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
-      - name: Add secret to GITHUB_ENV
+      - name: Add secrets to GITHUB_ENV
         run: |
           echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" >> $GITHUB_ENV
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> $GITHUB_ENV
-
-      - name: Output GitHub Actions run number
-        run: |
-          echo "GitHub Actions Run Number: ${{ github.run_number }}"
-          echo "CI_CD_PIPELINE_RUN_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: |
@@ -54,13 +49,11 @@ jobs:
 
       - name: Install AWS CLI
         run: |
-          set -ex
           if ! command -v aws &> /dev/null; then
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             sudo ./aws/install
           fi
-          aws --version
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -69,65 +62,46 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Delete existing SSH key pair if it exists and create new one
+      - name: Delete old SSH key pair and create a new one
         run: |
           set -ex
-          # Check if the key pair exists and delete it if it does
-          EXISTING_KEY=$(aws ec2 describe-key-pairs --key-name MyDynamicKey --query "KeyPairs[0].KeyName" --output text)
-          if [ "$EXISTING_KEY" == "MyDynamicKey" ]; then
-            aws ec2 delete-key-pair --key-name MyDynamicKey
-          fi
-          # Generate a new SSH key pair locally
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
-          # Read the public key, strip any non-ASCII characters, and base64-encode it
-          PUBLIC_KEY=$(cat ~/.ssh/MyDynamicKey.pub | tr -d '\r' | base64)
-          # Import the key pair to AWS
-          aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}
+          aws ec2 delete-key-pair --key-name MyDynamicKey || true
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""
+          aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material fileb://~/.ssh/MyDynamicKey.pub
 
-      - name: Deploy to AWS EC2
+      - name: Deploy EC2 instance
         run: |
           set -ex
           INSTANCE_ID=$(aws ec2 run-instances \
-            --region ${{ secrets.AWS_DEFAULT_REGION }} \
             --image-id ami-01816d07b1128cd2d \
             --instance-type t2.micro \
             --key-name MyDynamicKey \
             --security-group-ids sg-0a1c36e26e49cd294 \
-            --iam-instance-profile Name=access-to-s3 \
             --user-data '#!/bin/bash
             yum update -y
-            yum install -y yum-utils device-mapper-persistent-data lvm2
             amazon-linux-extras enable docker
             yum install -y docker
             systemctl start docker
-            systemctl enable docker
-            usermod -aG docker ec2-user
-            newgrp docker
-            DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
-            curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose' \
-            --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=project}]' \
+            systemctl enable docker' \
             --query 'Instances[0].InstanceId' \
             --output text)
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
-          # Wait until the instance is in a running and healthy state
-          aws ec2 wait instance-status-ok --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_DEFAULT_REGION }}
+          aws ec2 wait instance-status-ok --instance-ids $INSTANCE_ID
           PUBLIC_IP=$(aws ec2 describe-instances \
-            --region ${{ secrets.AWS_DEFAULT_REGION }} \
-            --instance-ids "$INSTANCE_ID" \
+            --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
-      # Optional: Terminate EC2 instance and delete key pair after deployment
-      # Uncomment if required
-      #
-      # - name: Delete EC2 key pair
-      #   run: |
-      #     aws ec2 delete-key-pair --key-name MyDynamicKey
-      #     rm -f ~/.ssh/MyDynamicKey
-      #
-      # - name: Terminate EC2 instance
-      #   if: always()
-      #   run: |
-      #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+      - name: SCP project files to EC2 instance
+        run: |
+          set -ex
+          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r . ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/project
+
+      - name: Run docker-compose on EC2 instance
+        run: |
+          set -ex
+          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << 'EOF'
+          cd /home/ec2-user/project
+          docker-compose up -d
+          EOF

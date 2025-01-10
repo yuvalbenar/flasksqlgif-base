@@ -19,7 +19,7 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
-      - name: Add secret to GITHUB_ENV
+      - name: Add secrets to GITHUB_ENV
         run: |
           echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" >> $GITHUB_ENV
@@ -69,7 +69,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Create new SSH key pair in AWS
+      - name: Create SSH key pair in AWS
         run: |
           set -ex
           # Generate a new SSH key pair locally
@@ -139,12 +139,12 @@ jobs:
         run: |
           set -ex
           ls -ltra
-          scp -i ~/.ssh/$KEY_NAME -o StrictHostKeyChecking=no \
+          scp -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no \
               docker-compose.yaml \
               init.sql \
               ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/
 
-          ssh -i ~/.ssh/$KEY_NAME -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << EOF
+          ssh -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << EOF
               newgrp docker
               cd /home/ec2-user/
               docker --version

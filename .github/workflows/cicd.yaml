@@ -75,8 +75,8 @@ jobs:
           # Generate a new SSH key pair locally
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
 
-          # Read the public key and ensure it's correctly formatted (strip any non-ASCII characters)
-          PUBLIC_KEY=$(cat ~/.ssh/MyDynamicKey.pub | tr -d '\r')
+          # Read the public key, strip any non-ASCII characters, and base64-encode it
+          PUBLIC_KEY=$(cat ~/.ssh/MyDynamicKey.pub | tr -d '\r' | base64)
 
           # Import the key pair to AWS
           aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}

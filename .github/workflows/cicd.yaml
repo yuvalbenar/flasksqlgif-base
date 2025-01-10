@@ -39,7 +39,6 @@ jobs:
         run: |
           docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
 
-      # Add the step to upload the private key as an artifact
       - name: Upload private key as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -116,7 +115,7 @@ jobs:
       - name: Create .env file on EC2
         run: |
           set -ex
-          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ubuntu/project/.env
           echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> /home/ubuntu/project/.env
           echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> /home/ubuntu/project/.env
@@ -133,7 +132,7 @@ jobs:
       - name: Run docker-compose on EC2 instance
         run: |
           set -ex
-          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
           # Install missing dependencies for Docker Compose
           sudo apt-get install -y gcc libffi-dev libxcrypt-dev python3-dev
 
@@ -144,7 +143,8 @@ jobs:
           # Verify docker-compose installation
           docker-compose --version
 
-          # Run docker-compose up (this will pull images and install dependencies inside the containers)
+          # Run docker-compose in detached mode and monitor logs
           cd /home/ubuntu/project
-          docker-compose up --build
+          docker-compose up -d --build
+          docker-compose logs -f
           EOF

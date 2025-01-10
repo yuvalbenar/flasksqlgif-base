@@ -39,6 +39,7 @@ jobs:
       - name: Push Docker image to Docker Hub
         run: |
           docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
+
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -72,6 +73,7 @@ jobs:
           PUBLIC_KEY=$(cat ~/.ssh/MyDynamicKey.pub | tr -d '\r' | base64)
           # Import the key pair to AWS
           aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}
+
       - name: Deploy to AWS EC2
         run: |
           set -ex
@@ -105,23 +107,26 @@ jobs:
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
+
       - name: Copy project files to EC2 instance
         run: |
           set -ex
           # Wait a bit for the instance to be ready before copying files
           sleep 30
-         # Wait for the EC2 instance to be accessible via SSH
-         until ssh -o StrictHostKeyChecking=no -i ${{ env.KEY_NAME }}.pem ec2-user@$PUBLIC_IP 'exit' ; do
-         echo "Waiting for SSH to be available..."
-         sleep 5
-         done
+          # Wait for the EC2 instance to be accessible via SSH
+          until ssh -o StrictHostKeyChecking=no -i ~/.ssh/MyDynamicKey ec2-user@$PUBLIC_IP 'exit' ; do
+            echo "Waiting for SSH to be available..."
+            sleep 5
+          done
+          # Once SSH is available, copy the project files
+          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r ./ ec2-user@$PUBLIC_IP:/home/ec2-user/project
 
-         # Once SSH is available, copy the project files
-         scp -i ${{ env.KEY_NAME }}.pem -o StrictHostKeyChecking=no -r ./ ec2-user@$PUBLIC_IP:/home/ec2-user/project
-         - name: Run Docker Compose on EC2
-           run: |
-           ssh -i ~/.ssh/MyDynamicKey ec2-user@$PUBLIC_IP \
-           "cd /home/ec2-user/project && docker-compose up -d"
+      - name: Run Docker Compose on EC2
+        run: |
+          set -ex
+          ssh -i ~/.ssh/MyDynamicKey ec2-user@$PUBLIC_IP \
+            "cd /home/ec2-user/project && docker-compose up -d"
+
       # Optional: Terminate EC2 instance and delete key pair after deployment
       # Uncomment if required
       #

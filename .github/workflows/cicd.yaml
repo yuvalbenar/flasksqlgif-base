@@ -78,10 +78,19 @@ jobs:
             --key-name MyDynamicKey \
             --security-group-ids sg-0a1c36e26e49cd294 \
             --user-data '#!/bin/bash
+            # Update and install Docker
             apt-get update -y
             apt-get install -y docker.io
+
+            # Add the ubuntu user to the docker group to allow non-root access to Docker
+            usermod -aG docker ubuntu
+
+            # Start and enable Docker
             systemctl start docker
-            systemctl enable docker' \
+            systemctl enable docker
+
+            # Verify Docker is working correctly
+            docker --version' \
             --query 'Instances[0].InstanceId' \
             --output text)
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV

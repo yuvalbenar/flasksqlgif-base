@@ -69,17 +69,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Create SSH key pair in AWS
+      - name: Create new SSH key pair in AWS
         run: |
           set -ex
           # Generate a new SSH key pair locally
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
+          KEY_NAME="MyDynamicKey-${{ github.run_number }}"
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/$KEY_NAME -N ""  # Generate a new SSH key pair
 
           # Read the public key, strip any non-ASCII characters, and base64-encode it
-          PUBLIC_KEY=$(cat ~/.ssh/MyDynamicKey.pub | tr -d '\r' | base64)
+          PUBLIC_KEY=$(cat ~/.ssh/$KEY_NAME.pub | tr -d '\r' | base64)
 
           # Import the key pair to AWS
-          aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}
+          aws ec2 import-key-pair --key-name $KEY_NAME --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}
 
       - name: Deploy to AWS EC2
         run: |
@@ -88,7 +89,7 @@ jobs:
             --region ${{ secrets.AWS_DEFAULT_REGION }} \
             --image-id ami-01816d07b1128cd2d \
             --instance-type t2.micro \
-            --key-name MyDynamicKey \
+            --key-name $KEY_NAME \
             --security-group-ids sg-0a1c36e26e49cd294 \
             --iam-instance-profile Name=access-to-s3 \
             --user-data '#!/bin/bash
@@ -138,12 +139,12 @@ jobs:
         run: |
           set -ex
           ls -ltra
-          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no \
+          scp -i ~/.ssh/$KEY_NAME -o StrictHostKeyChecking=no \
               docker-compose.yaml \
               init.sql \
               ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/
 
-          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << EOF
+          ssh -i ~/.ssh/$KEY_NAME -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << EOF
               newgrp docker
               cd /home/ec2-user/
               docker --version
@@ -156,8 +157,8 @@ jobs:
       #
       # - name: Delete EC2 key pair
       #   run: |
-      #     aws ec2 delete-key-pair --key-name MyDynamicKey
-      #     rm -f ~/.ssh/MyDynamicKey
+      #     aws ec2 delete-key-pair --key-name $KEY_NAME
+      #     rm -f ~/.ssh/$KEY_NAME
       #
       # - name: Terminate EC2 instance
       #   if: always()

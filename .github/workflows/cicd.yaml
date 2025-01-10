@@ -112,7 +112,6 @@ jobs:
           set -ex
           scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r . ubuntu@${{ env.PUBLIC_IP }}:/home/ubuntu/project
 
-      
       - name: Create .env file on EC2
         run: |
           set -ex
@@ -149,8 +148,8 @@ jobs:
           docker-compose up -d --build
 
           # Execute SQL commands to initialize database
-          docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init.sql
+          docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init-db.sql
 
           # Test database connection from flaskgif container
-          docker exec flasksqlgif-base flask db migrate
+          docker exec flaskgif flask db migrate
           EOF

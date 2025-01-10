@@ -72,12 +72,15 @@ jobs:
       - name: Create SSH key pair in AWS
         run: |
           set -ex
-          # Generate a new SSH key pair locally
+        # Generate a new SSH key pair locally
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
-          cat ~/.ssh/MyDynamicKey.pub  # Output the public key for AWS
-          
-          # Create the key pair in AWS using AWS CLI
-          aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material file://~/.ssh/MyDynamicKey.pub
+
+        # Encode the public key to base64
+          PUBLIC_KEY=$(cat ~/.ssh/MyDynamicKey.pub)
+
+        # Import the key pair to AWS
+          aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material "$PUBLIC_KEY" \
+          --region $AWS_REGION
 
       - name: Deploy to AWS EC2
         run: |

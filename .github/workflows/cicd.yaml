@@ -75,11 +75,6 @@ jobs:
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/my-dynamic-key -N ""  # Generate a new SSH key pair
           cat ~/.ssh/my-dynamic-key.pub  # Output the public key
 
-      - name: Create EC2 instance profile and role
-        run: |
-          aws iam create-instance-profile --instance-profile-name access-to-s3 || echo "Instance profile already exists"
-          aws iam add-role-to-instance-profile --instance-profile-name access-to-s3 --role-name access-to-s3
-
       - name: Deploy to AWS EC2
         run: |
           set -ex
@@ -91,17 +86,17 @@ jobs:
             --security-groups flask-mysql \
             --iam-instance-profile Name=access-to-s3 \
             --user-data '#!/bin/bash
-          yum update -y
-          yum install -y yum-utils device-mapper-persistent-data lvm2
-          amazon-linux-extras enable docker
-          yum install -y docker
-          systemctl start docker
-          systemctl enable docker
-          usermod -aG docker ec2-user
-          newgrp docker
-          DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
-          curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose' \
+            yum update -y
+            yum install -y yum-utils device-mapper-persistent-data lvm2
+            amazon-linux-extras enable docker
+            yum install -y docker
+            systemctl start docker
+            systemctl enable docker
+            usermod -aG docker ec2-user
+            newgrp docker
+            DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
+            curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose' \
             --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=project}]' \
             --query 'Instances[0].InstanceId' \
             --output text)

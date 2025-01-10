@@ -69,11 +69,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Create dynamic SSH key
+      - name: Create SSH key pair in AWS
         run: |
-          mkdir -p ~/.ssh
+          set -ex
+          # Generate a new SSH key pair locally
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
           cat ~/.ssh/MyDynamicKey.pub  # Output the public key for AWS
+          
+          # Create the key pair in AWS using AWS CLI
+          aws ec2 import-key-pair --key-name MyDynamicKey --public-key-material file://~/.ssh/MyDynamicKey.pub
 
       - name: Deploy to AWS EC2
         run: |

@@ -103,16 +103,16 @@ jobs:
           set -ex
           ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << 'EOF'
           # Install missing dependencies for Docker Compose
-          sudo yum install -y gcc libffi-devel libcrypt-devel python3-devel
-          sudo yum install -y libxcrypt-devel  # Try an alternative package for libcrypt
-          # Install Docker Compose
+          sudo yum install -y gcc libffi-devel libxcrypt-devel python3-devel
+          
+          # Install Docker Compose (if not already installed)
           sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-          
+
           # Verify docker-compose installation
           docker-compose --version
-          
-          # Run docker-compose up
+
+          # Run docker-compose up (this will pull images and install dependencies inside the containers)
           cd /home/ec2-user/project
           docker-compose up -d
           EOF

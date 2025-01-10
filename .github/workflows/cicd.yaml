@@ -1,50 +1,3 @@
-name: AWS CI/CD Pipeline
-
-on:
-  push:
-    branches:
-      - develop-aws
-  pull_request:
-    branches:
-      - develop-aws
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
-
-      - name: Add secrets to GITHUB_ENV
-        run: |
-          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
-          echo "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" >> $GITHUB_ENV
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
-          echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> $GITHUB_ENV
-
-      - name: Build Docker image
-        run: |
-          docker build -t yuvalbenar/flasksqlgifbase:${{ github.run_number }} .
-
-      - name: Docker login to Docker Hub
-        run: |
-          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-
-      - name: Push Docker image to Docker Hub
-        run: |
-          docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
-
-      - name: Upload private key as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyDynamicKey
-          path: ~/.ssh/MyDynamicKey
-
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -86,7 +39,7 @@ jobs:
             --user-data '#!/bin/bash
             # Update and install Docker
             apt-get update -y
-            apt-get install -y docker.io
+            apt-get install -y docker.io mysql-client
 
             # Add the ubuntu user to the docker group to allow non-root access to Docker
             usermod -aG docker ubuntu
@@ -111,6 +64,11 @@ jobs:
         run: |
           set -ex
           scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r . ubuntu@${{ env.PUBLIC_IP }}:/home/ubuntu/project
+
+      - name: Copy init.sql to EC2 instance
+        run: |
+          set -ex
+          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no init.sql ubuntu@${{ env.PUBLIC_IP }}:/home/ubuntu/project/init.sql
 
       - name: Create .env file on EC2
         run: |
@@ -146,5 +104,10 @@ jobs:
           # Run docker-compose in detached mode and monitor logs
           cd /home/ubuntu/project
           docker-compose up -d --build
-          docker-compose logs -f
+
+          # Execute SQL commands to initialize database
+          docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init.sql
+
+          # Test database connection from flaskgif container
+          docker exec flasksqlgif-base flask db migrate
           EOF

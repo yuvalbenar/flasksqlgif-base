@@ -1,95 +1,72 @@
-name: AWS CI/CD Pipeline
+name: Build and Deploy Flask App to AWS EC2
 
 on:
   push:
     branches:
-      - develop-aws
-  pull_request:
-    branches:
-      - develop-aws
+      - develop
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Set up Docker
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Add secrets to GITHUB_ENV
-        run: |
-          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
-          echo "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" >> $GITHUB_ENV
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
-          echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> $GITHUB_ENV
-
-      - name: Output GitHub Actions run number
-        run: |
-          echo "GitHub Actions Run Number: ${{ github.run_number }}"
-          echo "CI_CD_PIPELINE_RUN_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
 
       - name: Build Docker image
         run: |
-          docker build -t yuvalbenar/flasksqlgifbase:${{ github.run_number }} .
+          docker build -t flasksqlgifbase .
 
-      - name: Docker login to Docker Hub
-        run: |
-          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Push Docker image to Docker Hub
         run: |
-          docker push yuvalbenar/flasksqlgifbase:${{ github.run_number }}
+          docker push yuvalbenar/flasksqlgifbase:v1.0.82
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install AWS CLI
-        run: |
-          set -ex
-          if ! command -v aws &> /dev/null; then
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
-          fi
-          aws --version
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Create SSH key pair in AWS
+      - name: Create a new EC2 key pair
+        id: create-key-pair
         run: |
-          set -ex
-          # Generate a new SSH key pair locally
-          KEY_NAME="MyDynamicKey-${{ github.run_number }}"
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/$KEY_NAME -N ""  # Generate a new SSH key pair
+          KEY_NAME="ec2-key-$(date +'%Y-%m-%d-%H-%M-%S')"
+          aws ec2 create-key-pair --key-name "$KEY_NAME" --query 'KeyMaterial' --output text > "$KEY_NAME.pem"
+          chmod 400 "$KEY_NAME.pem"
+          echo "KEY_NAME=$KEY_NAME" >> $GITHUB_ENV
+          echo "$KEY_NAME.pem" >> $GITHUB_ENV
 
-          # Read the public key, strip any non-ASCII characters, and base64-encode it
-          PUBLIC_KEY=$(cat ~/.ssh/$KEY_NAME.pub | tr -d '\r' | base64)
-
-          # Import the key pair to AWS
-          aws ec2 import-key-pair --key-name $KEY_NAME --public-key-material "$PUBLIC_KEY" --region ${{ secrets.AWS_DEFAULT_REGION }}
-
-      - name: Deploy to AWS EC2
+      - name: Launch EC2 Instance
         run: |
-          set -ex
           INSTANCE_ID=$(aws ec2 run-instances \
-            --region ${{ secrets.AWS_DEFAULT_REGION }} \
+            --region ${{ secrets.AWS_REGION }} \
             --image-id ami-01816d07b1128cd2d \
             --instance-type t2.micro \
-            --key-name $KEY_NAME \
+            --key-name ${{ env.KEY_NAME }} \
             --security-group-ids sg-0a1c36e26e49cd294 \
             --iam-instance-profile Name=access-to-s3 \
             --user-data '#!/bin/bash
@@ -109,58 +86,22 @@ jobs:
             --output text)
 
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
-          aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_DEFAULT_REGION }}
+          aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_REGION }}
 
+      - name: Retrieve EC2 Public IP
+        run: |
           PUBLIC_IP=$(aws ec2 describe-instances \
-            --region ${{ secrets.AWS_DEFAULT_REGION }} \
+            --region ${{ secrets.AWS_REGION }} \
             --instance-ids "$INSTANCE_ID" \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
 
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
-      - name: Check SSH connection status
+      - name: SSH and deploy to EC2
         run: |
-          set -ex
-          while ! nc -z ${{ env.PUBLIC_IP }} 22; do
-              echo "waiting for ssh test to succeed.."
-              sleep 3
-          done
-
-      - name: Install SSH client
-        run: |
-          set -ex
-          if ! ssh -V 2>&1 /dev/null; then 
-            sudo apt-get update
-            sudo apt-get install -y openssh-client
-          fi
-
-      - name: SCP and SSH into EC2 instance
-        run: |
-          set -ex
-          ls -ltra
-          scp -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no \
-              docker-compose.yaml \
-              init.sql \
-              ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/
-
-          ssh -i ~/.ssh/${{ env.KEY_NAME }} -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << EOF
-              newgrp docker
-              cd /home/ec2-user/
-              docker --version
-              docker-compose --version
-              docker-compose up -d --quiet-pull
+          scp -o StrictHostKeyChecking=no -i ${{ env.KEY_NAME }}.pem -r . ec2-user@$PUBLIC_IP:/home/ec2-user
+          ssh -o StrictHostKeyChecking=no -i ${{ env.KEY_NAME }}.pem ec2-user@$PUBLIC_IP << 'EOF'
+            cd /home/ec2-user
+            docker-compose up -d
           EOF
-
-      # Optional: Terminate EC2 instance and delete key pair after deployment
-      # Uncomment if required
-      #
-      # - name: Delete EC2 key pair
-      #   run: |
-      #     aws ec2 delete-key-pair --key-name $KEY_NAME
-      #     rm -f ~/.ssh/$KEY_NAME
-      #
-      # - name: Terminate EC2 instance
-      #   if: always()
-      #   run: |
-      #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID

@@ -120,7 +120,10 @@ jobs:
 
       - name: Copy project files to EC2 instance
         run: |
-          scp -i ~/.ssh/MyDynamicKey -r ./ ec2-user@$PUBLIC_IP:/home/ec2-user/project
+          set -ex
+          # Wait a bit for the instance to be ready before copying files
+          sleep 30
+          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r ./ ec2-user@$PUBLIC_IP:/home/ec2-user/project
 
       - name: Run Docker Compose on EC2
         run: |

@@ -72,8 +72,8 @@ jobs:
       - name: Create dynamic SSH key
         run: |
           mkdir -p ~/.ssh
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/my-dynamic-key -N ""  # Generate a new SSH key pair
-          cat ~/.ssh/my-dynamic-key.pub  # Output the public key
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/MyDynamicKey -N ""  # Generate a new SSH key pair
+          cat ~/.ssh/MyDynamicKey.pub  # Output the public key for AWS
 
       - name: Deploy to AWS EC2
         run: |
@@ -86,23 +86,22 @@ jobs:
             --security-group-ids sg-0a1c36e26e49cd294 \
             --iam-instance-profile Name=access-to-s3 \
             --user-data '#!/bin/bash
-          yum update -y
-          yum install -y yum-utils device-mapper-persistent-data lvm2
-          amazon-linux-extras enable docker
-          yum install -y docker
-          systemctl start docker
-          systemctl enable docker
-          usermod -aG docker ec2-user
-          newgrp docker
-          DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
-          curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose' \
+            yum update -y
+            yum install -y yum-utils device-mapper-persistent-data lvm2
+            amazon-linux-extras enable docker
+            yum install -y docker
+            systemctl start docker
+            systemctl enable docker
+            usermod -aG docker ec2-user
+            newgrp docker
+            DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r ".tag_name")
+            curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose' \
             --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=project}]' \
             --query 'Instances[0].InstanceId' \
             --output text)
 
-          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV 
-
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
           aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region ${{ secrets.AWS_DEFAULT_REGION }}
 
           PUBLIC_IP=$(aws ec2 describe-instances \
@@ -115,11 +114,11 @@ jobs:
 
       - name: Copy project files to EC2 instance
         run: |
-          scp -i ~/.ssh/my-dynamic-key -r ./ ec2-user@$PUBLIC_IP:/home/ec2-user/project
+          scp -i ~/.ssh/MyDynamicKey -r ./ ec2-user@$PUBLIC_IP:/home/ec2-user/project
 
       - name: Run Docker Compose on EC2
         run: |
-          ssh -i ~/.ssh/my-dynamic-key ec2-user@$PUBLIC_IP \
+          ssh -i ~/.ssh/MyDynamicKey ec2-user@$PUBLIC_IP \
             "cd /home/ec2-user/project && docker-compose up -d"
 
       # Optional: Terminate EC2 instance and delete key pair after deployment
@@ -128,7 +127,7 @@ jobs:
       # - name: Delete EC2 key pair
       #   run: |
       #     aws ec2 delete-key-pair --key-name MyDynamicKey
-      #     rm -f my-dynamic-key.pem
+      #     rm -f ~/.ssh/MyDynamicKey
       #
       # - name: Terminate EC2 instance
       #   if: always()

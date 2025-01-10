@@ -73,14 +73,13 @@ jobs:
         run: |
           set -ex
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id ami-01816d07b1128cd2d \
+            --image-id ami-0037f7bd79427657a \
             --instance-type t2.micro \
             --key-name MyDynamicKey \
             --security-group-ids sg-0a1c36e26e49cd294 \
             --user-data '#!/bin/bash
-            yum update -y
-            amazon-linux-extras enable docker
-            yum install -y docker
+            apt-get update -y
+            apt-get install -y docker.io
             systemctl start docker
             systemctl enable docker' \
             --query 'Instances[0].InstanceId' \
@@ -96,15 +95,15 @@ jobs:
       - name: SCP project files to EC2 instance
         run: |
           set -ex
-          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r . ec2-user@${{ env.PUBLIC_IP }}:/home/ec2-user/project
+          scp -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no -r . ubuntu@${{ env.PUBLIC_IP }}:/home/ubuntu/project
 
       - name: Run docker-compose on EC2 instance
         run: |
           set -ex
-          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ec2-user@${{ env.PUBLIC_IP }} << 'EOF'
+          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
           # Install missing dependencies for Docker Compose
-          sudo yum install -y gcc libffi-devel libxcrypt-devel python3-devel
-          
+          sudo apt-get install -y gcc libffi-dev libxcrypt-dev python3-dev
+
           # Install Docker Compose (if not already installed)
           sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
@@ -113,6 +112,6 @@ jobs:
           docker-compose --version
 
           # Run docker-compose up (this will pull images and install dependencies inside the containers)
-          cd /home/ec2-user/project
+          cd /home/ubuntu/project
           docker-compose up -d
           EOF

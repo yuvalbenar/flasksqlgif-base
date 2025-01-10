@@ -147,6 +147,12 @@ jobs:
           cd /home/ubuntu/project
           docker-compose up -d --build
 
+          # Wait for MySQL to be ready by trying a simple query
+          until docker exec gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} -e "SELECT 1"; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 10
+          done
+
           # Execute SQL commands to initialize database
           docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init-db.sql
 

@@ -116,10 +116,6 @@ jobs:
             done
             echo "***-data script finished successfully"
 
-            # Ensure init.sql is in the correct directory
-            echo "Listing files in /home/ubuntu/project"
-            ls -ltra /home/ubuntu/project
-
             # Install Docker Compose if not already installed
             if ! command -v docker-compose &> /dev/null; then
               echo "Installing Docker Compose..."
@@ -154,6 +150,18 @@ jobs:
             echo "FLASK_APP_URL=${{ secrets.FLASK_APP_URL }}" >> /home/ubuntu/project/.env
           EOF
 
+      - name: Verify init-db.sql exists on EC2
+        run: |
+          set -ex
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+            if [ ! -f /home/ubuntu/project/init-db.sql ]; then
+              echo "init-db.sql not found, exiting"
+              exit 1
+            else
+              echo "init-db.sql found"
+            fi
+          EOF
+
       - name: Run docker-compose on EC2 instance
         run: |
           set -ex
@@ -164,5 +172,5 @@ jobs:
             docker-compose --version
             cd /home/ubuntu/project
             docker-compose up -d --build
-            docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init.sql
+            docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init-db.sql
           EOF

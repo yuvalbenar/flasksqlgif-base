@@ -1,4 +1,4 @@
-name: AWS CI/CD Pipeline 
+name: AWS CI/CD Pipeline
 
 on:
   push:
@@ -84,18 +84,11 @@ jobs:
             --key-name MyDynamicKey \
             --security-group-ids sg-0a1c36e26e49cd294 \
             --user-data '#!/bin/bash
-            # Update and install Docker
             apt-get update -y
             apt-get install -y docker.io mysql-client
-
-            # Add the ubuntu user to the docker group to allow non-root access to Docker
             usermod -aG docker ubuntu
-
-            # Start and enable Docker
             systemctl start docker
             systemctl enable docker
-
-            # Verify Docker is working correctly
             docker --version' \
             --query 'Instances[0].InstanceId' \
             --output text)
@@ -107,6 +100,24 @@ jobs:
             --output text)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
+      - name: SSH - check user-data script and run project
+        run: |
+          set -ex
+          ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+            echo "now in EC2, waiting for user-data script to end successfully (installing Docker)..."
+            while [ ! -f /var/lib/cloud/instance/boot-finished ]; do
+              echo "sadly still waiting..."
+              sleep 3
+            done
+            echo "user-data script finished successfully"
+            newgrp docker
+            cd /home/ubuntu/
+            ls -ltra
+            docker --version
+            docker-compose --version
+            docker-compose up -d --quiet-pull
+          EOF
+
       - name: SCP project files to EC2 instance
         run: |
           set -ex
@@ -116,56 +127,28 @@ jobs:
         run: |
           set -ex
           ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ubuntu/project/.env
-          echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> /home/ubuntu/project/.env
-          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> /home/ubuntu/project/.env
-          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> /home/ubuntu/project/.env
-          echo "DATABASE_HOST=gif-db" >> /home/ubuntu/project/.env
-          echo "DATABASE_PORT=3306" >> /home/ubuntu/project/.env
-          echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> /home/ubuntu/project/.env
-          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> /home/ubuntu/project/.env
-          echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> /home/ubuntu/project/.env
-          echo "FLASK_ENV=production" >> /home/ubuntu/project/.env
-          echo "FLASK_APP_URL=${{ secrets.FLASK_APP_URL }}" >> /home/ubuntu/project/.env
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ubuntu/project/.env
+            echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> /home/ubuntu/project/.env
+            echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> /home/ubuntu/project/.env
+            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> /home/ubuntu/project/.env
+            echo "DATABASE_HOST=gif-db" >> /home/ubuntu/project/.env
+            echo "DATABASE_PORT=3306" >> /home/ubuntu/project/.env
+            echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> /home/ubuntu/project/.env
+            echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> /home/ubuntu/project/.env
+            echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> /home/ubuntu/project/.env
+            echo "FLASK_ENV=production" >> /home/ubuntu/project/.env
+            echo "FLASK_APP_URL=${{ secrets.FLASK_APP_URL }}" >> /home/ubuntu/project/.env
           EOF
 
       - name: Run docker-compose on EC2 instance
         run: |
           set -ex
           ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          sudo apt-get install -y gcc libffi-dev libxcrypt-dev python3-dev
-          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          cd /home/ubuntu/project
-          docker-compose up -d --build
-          EOF
-
-      - name: Wait for MySQL to be ready
-        run: |
-          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          until docker exec gif-db mysqladmin ping -h "localhost" --silent; do
-            echo "Waiting for MySQL to be ready..."
-            sleep 3
-          done
-          EOF
-
-      - name: Wait for Flask app to be ready
-        run: |
-          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          until docker exec flaskgif curl --silent --fail http://flaskgif:5000; do
-            echo "Waiting for Flask app to be ready..."
-            sleep 3
-          done
-          EOF
-
-      - name: Run Flask DB Migrate
-        run: |
-          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          docker exec flaskgif flask db migrate
-          EOF
-
-      - name: Run Flask DB Upgrade
-        run: |
-          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          docker exec flaskgif flask db upgrade
+            sudo apt-get install -y gcc libffi-dev libxcrypt-dev python3-dev
+            sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            docker-compose --version
+            cd /home/ubuntu/project
+            docker-compose up -d --build
+            docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init.sql
           EOF

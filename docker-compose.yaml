@@ -1,5 +1,5 @@
 version: '3.8'
-
+#works!
 services:
   flaskgif:
     build:
@@ -41,13 +41,13 @@ services:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
 
+
 networks:
   flaskapp-network:
     driver: bridge
 
 volumes:
   mysql-data:
-
 
 
 # version: '3.8'

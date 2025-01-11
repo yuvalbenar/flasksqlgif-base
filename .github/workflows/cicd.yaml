@@ -100,7 +100,7 @@ jobs:
             --output text)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
-      - name: SSH - check user-data script and run project
+      - name: SSH - check user-data script and install Docker Compose
         run: |
           set -ex
           ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
@@ -110,6 +110,16 @@ jobs:
               sleep 3
             done
             echo "user-data script finished successfully"
+            
+            # Install Docker Compose if not already installed
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Installing Docker Compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            else
+              echo "Docker Compose is already installed."
+            fi
+            
             newgrp docker
             cd /home/ubuntu/
             ls -ltra

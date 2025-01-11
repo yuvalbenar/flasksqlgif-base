@@ -116,6 +116,10 @@ jobs:
             done
             echo "***-data script finished successfully"
 
+            # Ensure init.sql is in the correct directory
+            echo "Listing files in /home/ubuntu/project"
+            ls -ltra /home/ubuntu/project
+
             # Install Docker Compose if not already installed
             if ! command -v docker-compose &> /dev/null; then
               echo "Installing Docker Compose..."

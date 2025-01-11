@@ -1,4 +1,4 @@
-name: AWS CI/CD Pipeline
+name: AWS CI/CD Pipeline 
 
 on:
   push:
@@ -145,6 +145,15 @@ jobs:
           ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
           until docker exec gif-db mysqladmin ping -h "localhost" --silent; do
             echo "Waiting for MySQL to be ready..."
+            sleep 3
+          done
+          EOF
+
+      - name: Wait for Flask app to be ready
+        run: |
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+          until docker exec flaskgif curl --silent --fail http://flaskgif:5000; do
+            echo "Waiting for Flask app to be ready..."
             sleep 3
           done
           EOF

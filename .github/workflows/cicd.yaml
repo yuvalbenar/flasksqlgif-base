@@ -154,8 +154,5 @@ jobs:
           done
 
           # Execute SQL commands to initialize database
-          docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init-db.sql
-
-          # Test database connection from flaskgif container
-          docker exec flaskgif flask db migrate
+          docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init-db.sql        
           EOF

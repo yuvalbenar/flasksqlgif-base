@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS images (
 );
 
 -- Insert GIF URLs (without checking for duplicates)
-INSERT INTO images (url) 
+INSERT IGNORE INTO images (url) 
 VALUES 
     ('https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOXpyZDlzODRsejNicHc4dDVvNXRscjdybDNldXc1eWhqejM3cjY4ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/QvBoMEcQ7DQXK/giphy.gif'),
     ('https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExc3EzNWVlOWFjaGtpYjdxaWc3c2RxOHZrNG44dHI4NXNmdHk0MDJ5aSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/yXBqba0Zx8S4/giphy-downsized.gif'),

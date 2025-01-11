@@ -100,17 +100,17 @@ jobs:
             --output text)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
-      - name: SSH - check user-data script and install Docker Compose
+      - name: SSH - check user-data script and run project
         run: |
           set -ex
           ssh -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-            echo "now in EC2, waiting for user-data script to end successfully (installing Docker)..."
+            echo "now in EC2, waiting for ***-data script to end successfully (installing Docker)..."
             while [ ! -f /var/lib/cloud/instance/boot-finished ]; do
               echo "sadly still waiting..."
               sleep 3
             done
-            echo "user-data script finished successfully"
-            
+            echo "***-data script finished successfully"
+
             # Install Docker Compose if not already installed
             if ! command -v docker-compose &> /dev/null; then
               echo "Installing Docker Compose..."
@@ -119,10 +119,10 @@ jobs:
             else
               echo "Docker Compose is already installed."
             fi
-            
-            newgrp docker
-            cd /home/ubuntu/
-            ls -ltra
+
+            # Move to the project directory where docker-compose.yml is located
+            cd /home/ubuntu/project || exit 1
+            ls -ltra  # Confirm we're in the right directory
             docker --version
             docker-compose --version
             docker-compose up -d --quiet-pull

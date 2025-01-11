@@ -133,29 +133,30 @@ jobs:
         run: |
           set -ex
           ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
-          # Install missing dependencies for Docker Compose
           sudo apt-get install -y gcc libffi-dev libxcrypt-dev python3-dev
-
-          # Install Docker Compose (if not already installed)
           sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-
-          # Verify docker-compose installation
-          docker-compose --version
-
-          # Run docker-compose in detached mode and monitor logs
           cd /home/ubuntu/project
           docker-compose up -d --build
+          EOF
 
-          # Wait for MySQL to be ready by trying a simple query
-          until docker exec gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} -e "SELECT 1"; do
+      - name: Wait for MySQL to be ready
+        run: |
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+          until docker exec gif-db mysqladmin ping -h "localhost" --silent; do
             echo "Waiting for MySQL to be ready..."
-            sleep 10
+            sleep 3
           done
+          EOF
 
-          # Execute SQL commands to initialize database
-          docker exec -i gif-db mysql -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} flaskdb < /home/ubuntu/project/init-db.sql
+      - name: Run Flask DB Migrate
+        run: |
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+          docker exec flaskgif flask db migrate
+          EOF
 
-          # Test database connection from flaskgif container
-          docker exec flaskgif flaskdb migrate
+      - name: Run Flask DB Upgrade
+        run: |
+          ssh -o ServerAliveInterval=60 -i ~/.ssh/MyDynamicKey -o StrictHostKeyChecking=no ubuntu@${{ env.PUBLIC_IP }} << 'EOF'
+          docker exec flaskgif flask db upgrade
           EOF
